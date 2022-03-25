@@ -1,0 +1,6 @@
+doxygen/
+.vscode/
+toolbuild/
+tools/
+vscode-os161
+root/
