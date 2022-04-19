@@ -110,8 +110,19 @@ syscall(struct trapframe *tf)
 		break;
 
 	    case SYS_write:
-		err = sys_write(tf->tf_a0,(void*)tf->tf_a1,tf->tf_a2);
+		retval = sys_write(tf->tf_a0,(void*)tf->tf_a1,tf->tf_a2);
+		if(retval < 0) err=1;
+		else err=0;
 		break;
+
+		case SYS_read:
+		retval = sys_read(tf->tf_a0,(void*)tf->tf_a1,tf->tf_a2);
+		if(retval < 0) err=1;
+		else err=0;
+		break;
+
+		case SYS__exit:
+		sys_exit(tf->tf_a0);
 
 	    default:
 		kprintf("Unknown syscall %d\n", callno);
