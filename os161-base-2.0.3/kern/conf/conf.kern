@@ -339,10 +339,15 @@ file      proc/proc.c
 # Virtual memory system
 # (you will probably want to add stuff here while doing the VM assignment)
 #
-
 file      vm/kmalloc.c
 
-optofffile dumbvm   vm/addrspace.c
+#optofffile   vm/addrspace.c
+
+defoption lessdumbvm
+optfile lessdumbvm arch/mips/vm/lessdumbvm.c
+
+defoption dumbvm
+optfile dumbvm arch/mips/vm/dumbvm.c
 
 #
 # Network
