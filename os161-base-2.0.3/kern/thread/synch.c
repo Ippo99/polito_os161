@@ -225,12 +225,10 @@ bool lock_do_i_hold(struct lock *lock) {
 
 struct cv *cv_create(const char *name) {
     struct cv *cv;
-
     cv = kmalloc(sizeof(*cv));
     if (cv == NULL) {
         return NULL;
     }
-
     cv->cv_name = kstrdup(name);
     if (cv->cv_name == NULL) {
         kfree(cv);
@@ -238,33 +236,67 @@ struct cv *cv_create(const char *name) {
     }
 
     // add stuff here as needed
-
+    cv->cv_wchan = wchan_create(cv->cv_name);
+    if (cv->cv_wchan == NULL) {
+        kfree(cv->cv_name);
+        kfree(cv);
+        return NULL;
+    }
+    spinlock_init(&cv->cv_lock);
     return cv;
 }
 
 void cv_destroy(struct cv *cv) {
     KASSERT(cv != NULL);
-
-    // add stuff here as needed
-
+    spinlock_cleanup(&cv->cv_lock);
+    wchan_destroy(cv->cv_wchan);
     kfree(cv->cv_name);
     kfree(cv);
 }
 
 void cv_wait(struct cv *cv, struct lock *lock) {
-    // Write this
+    KASSERT(lock != NULL);
+    KASSERT(cv != NULL);
+    KASSERT(lock_do_i_hold(lock));
+
+    spinlock_acquire(&cv->cv_lock);
+    /* G.Cabodi - 2019: spinlock already owned as atomic
+       lock_release+wchan_sleep needed */
+    lock_release(lock);
+    wchan_sleep(cv->cv_wchan, &cv->cv_lock);
+    spinlock_release(&cv->cv_lock);
+    /* G.Cabodi - 2019: spinlock already  released to avoid ownership while
+       (possibly) going to wait state in lock_acquire.
+       Atomicity wakeup+lock_acquire not guaranteed (but not necessary!) */
+    lock_acquire(lock);
     (void)cv;    // suppress warning until code gets written
     (void)lock;  // suppress warning until code gets written
 }
 
 void cv_signal(struct cv *cv, struct lock *lock) {
     // Write this
+    KASSERT(lock != NULL);
+    KASSERT(cv != NULL);
+    KASSERT(lock_do_i_hold(lock));
+    /* g.Cabodi - 2019: here the spinlock is NOT required, as no atomic
+       operation
+       has to be done. The spinlock is just acquired because needed by wakeone
+     */
+    spinlock_acquire(&cv->cv_lock);
+    wchan_wakeone(cv->cv_wchan, &cv->cv_lock);
+    spinlock_release(&cv->cv_lock);
     (void)cv;    // suppress warning until code gets written
     (void)lock;  // suppress warning until code gets written
 }
 
 void cv_broadcast(struct cv *cv, struct lock *lock) {
-    // Write this
+    KASSERT(lock != NULL);
+    KASSERT(cv != NULL);
+    KASSERT(lock_do_i_hold(lock));
+    /* G.Cabodi - 2019: see comment on spinlocks in cv_signal */
+    spinlock_acquire(&cv->cv_lock);
+    wchan_wakeall(cv->cv_wchan, &cv->cv_lock);
+    spinlock_release(&cv->cv_lock);
     (void)cv;    // suppress warning until code gets written
     (void)lock;  // suppress warning until code gets written
 }
